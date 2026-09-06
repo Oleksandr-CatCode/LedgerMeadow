@@ -10,6 +10,8 @@ The running React interface with **synthetic demo data**. Every displayed accoun
 
 ![Dashboard with invented balances, protected spaces, and upcoming bills](docs/screenshots/dashboard.jpg)
 
+![Planning with invented income, monthly allocations, bills, and subscriptions](docs/screenshots/planning.jpg)
+
 <details>
 <summary>Accounts and spaces</summary>
 

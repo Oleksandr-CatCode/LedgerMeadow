@@ -4,13 +4,14 @@ These JPEGs are browser captures of the existing LedgerMeadow React components. 
 
 The renderer was kept outside the application repository. It did not load local environment files, call Clerk, use a database, or contact a bank provider. API reads were answered from invented fixtures; writes were rejected. A content security policy blocked network connections and embedded frames. No authentication bypass or screenshot mode was added to the shipped application.
 
-Every image contains a visible **SYNTHETIC DEMO** banner. The identity is “Demo workspace”; the institution is “Example Credit Union”. Account suffixes are dummy sequence values. Names, dates in April 2040, amounts, balances, and allocations were authored for the demonstration and have no connection to a person's financial records.
+Every image contains a visible **SYNTHETIC DEMO** banner. The identity is “Demo workspace”; the institution is “Example Credit Union”. Account suffixes are dummy sequence values. Names, dates in 2040, amounts, balances, and allocations were authored for the demonstration and have no connection to a person's financial records.
 
 | File | View |
 | --- | --- |
 | `dashboard.jpg` | Available balance, protected money, spaces, monthly plan, and upcoming items |
 | `accounts.jpg` | An invented institution, spending account, and savings account |
 | `spaces.jpg` | Invented everyday, bills, and rainy-day allocations |
+| `planning.jpg` | Invented expected income, monthly allocations, recurring costs, and upcoming commitments |
 
 The images were reviewed visually and their visible text was compared with the invented fixture inputs. Their JPEG metadata contains only a generic JFIF header and a shared standard color profile; no EXIF, location, user comments, embedded thumbnail, private URL, or appended payload was found.
 
