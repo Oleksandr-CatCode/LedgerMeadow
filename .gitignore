@@ -67,6 +67,7 @@ db/seeds/
 !docs/screenshots/dashboard.jpg
 !docs/screenshots/accounts.jpg
 !docs/screenshots/spaces.jpg
+!docs/screenshots/planning.jpg
 *.zip
 *.tar*
 *.pt

@@ -14,6 +14,7 @@ REVIEWED_IMAGES = {
     'docs/screenshots/dashboard.jpg': '52e8aeebebb607fb3f7240e6de6b3fce3adbcb86bfa5b7cfc83e683dff131ffc',
     'docs/screenshots/accounts.jpg': '4215864f4fcfc808f78d181a3611208dbb5ad0db4b62e8ab560932a4c62a3d7a',
     'docs/screenshots/spaces.jpg': '2369a90732399f5a4c96a24222d2aacca544712b3f35e0a86abd03feb95f0787',
+    'docs/screenshots/planning.jpg': '351171a96d512b0e8f9c216604745fbe586d95220a93f25234aba8a9923c1af4',
 }
 NUMERIC_BOUNDARIES = {'9223372036854775807', '9223372036854775808',
                       '9007199254740991', '9007199254740992', '9007199254740993'}
