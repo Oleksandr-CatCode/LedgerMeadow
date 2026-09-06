@@ -1,0 +1,636 @@
+syntax = "proto3";
+
+package ledgermeadow.financial_engine.v1;
+
+option go_package = "ledgermeadow/src/modules/platform/financialengine/pb;financialenginepb";
+
+service FinancialEngine {
+  rpc CategorizeTransactions(CategorizeTransactionsRequest) returns (CategorizeTransactionsResponse);
+  rpc DetectRecurring(DetectRecurringRequest) returns (DetectRecurringResponse);
+  rpc EvaluateRules(EvaluateRulesRequest) returns (EvaluateRulesResponse);
+  rpc CalculateBudgetStatus(CalculateBudgetStatusRequest) returns (CalculateBudgetStatusResponse);
+  rpc CalculateAvailableToSpend(CalculateAvailableToSpendRequest) returns (CalculateAvailableToSpendResponse);
+  rpc CalculateCashFlow(CalculateCashFlowRequest) returns (CalculateCashFlowResponse);
+  rpc BuildProjection(BuildProjectionRequest) returns (BuildProjectionResponse);
+  rpc CalculateGoal(CalculateGoalRequest) returns (CalculateGoalResponse);
+  rpc CalculateLoanScenario(CalculateLoanScenarioRequest) returns (CalculateLoanScenarioResponse);
+  rpc CalculateHouseholdSettlement(CalculateHouseholdSettlementRequest) returns (CalculateHouseholdSettlementResponse);
+  rpc CalculateAnalyticsBreakdown(CalculateAnalyticsBreakdownRequest) returns (CalculateAnalyticsBreakdownResponse);
+  rpc CalculateNetWorth(CalculateNetWorthRequest) returns (CalculateNetWorthResponse);
+  rpc CalculateSubscriptionSummary(CalculateSubscriptionSummaryRequest) returns (CalculateSubscriptionSummaryResponse);
+  rpc CalculatePlanningSummary(CalculatePlanningSummaryRequest) returns (CalculatePlanningSummaryResponse);
+}
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_CAD = 1;
+  CURRENCY_USD = 2;
+}
+
+message Date {
+  int32 year = 1;
+  uint32 month = 2;
+  uint32 day = 3;
+}
+
+enum AnalysisAccountKind {
+  ANALYSIS_ACCOUNT_KIND_UNSPECIFIED = 0;
+  ANALYSIS_ACCOUNT_KIND_ASSET = 1;
+  ANALYSIS_ACCOUNT_KIND_LIABILITY = 2;
+}
+
+enum CategoryType {
+  CATEGORY_TYPE_UNSPECIFIED = 0;
+  CATEGORY_TYPE_INCOME = 1;
+  CATEGORY_TYPE_EXPENSE = 2;
+  CATEGORY_TYPE_TRANSFER = 3;
+}
+
+message AnalysisTransaction {
+  string transaction_id = 1;
+  string account_id = 2;
+  string name = 3;
+  optional string merchant_name = 4;
+  optional string original_description = 5;
+  int64 amount_minor = 6;
+  Currency currency = 7;
+  Date date = 8;
+  optional string provider_category_primary = 9;
+  optional string provider_category_detailed = 10;
+  reserved 11;
+  reserved "category";
+  AnalysisAccountKind account_kind = 12;
+  optional string category_id = 13;
+  CategoryType category_type = 14;
+}
+
+message CategoryCandidate {
+  string category_id = 1;
+  string name = 2;
+  CategoryType category_type = 3;
+  optional string parent_name = 4;
+}
+
+message CategorizationSignal {
+  string learning_key = 1;
+  string category_id = 2;
+  uint32 personal_observation_count = 3;
+  uint32 global_user_count = 4;
+  uint32 global_total_contributor_count = 5;
+}
+
+message CategorizeTransactionsRequest {
+  repeated AnalysisTransaction transactions = 1;
+  repeated CategoryCandidate categories = 2;
+  repeated CategorizationSignal signals = 3;
+}
+
+message Categorization {
+  string transaction_id = 1;
+  reserved 2;
+  reserved "category";
+  uint32 confidence_basis_points = 3;
+  string reason = 4;
+  string category_id = 5;
+  string learning_key = 6;
+}
+
+message CategorizeTransactionsResponse {
+  repeated Categorization categorizations = 1;
+}
+
+enum RecurringKind {
+  RECURRING_KIND_UNSPECIFIED = 0;
+  RECURRING_KIND_INCOME = 1;
+  RECURRING_KIND_BILL = 2;
+  RECURRING_KIND_SUBSCRIPTION = 3;
+}
+
+message CategoryRecurrenceEvidence {
+  string category_id = 1;
+  uint32 subscription_count = 2;
+  uint32 bill_count = 3;
+  uint32 confirmed_subscription_count = 4;
+  uint32 confirmed_bill_count = 5;
+  RecurringKind kind_hint = 6;
+}
+
+enum RecurringEvidence {
+  RECURRING_EVIDENCE_UNSPECIFIED = 0;
+  RECURRING_EVIDENCE_CADENCE = 1;
+  RECURRING_EVIDENCE_LEARNED_CATEGORY = 2;
+}
+
+message DetectRecurringRequest {
+  Date as_of_date = 1;
+  repeated AnalysisTransaction transactions = 2;
+  repeated CategoryRecurrenceEvidence category_evidence = 3;
+  Frequency prevailing_frequency = 4;
+}
+
+message RecurringCandidate {
+  string detection_key = 1;
+  string name = 2;
+  RecurringKind kind = 3;
+  Currency currency = 4;
+  Frequency frequency = 5;
+  int64 expected_amount_minor = 6;
+  Date next_expected_at = 7;
+  uint32 confidence_basis_points = 8;
+  uint32 occurrence_count = 9;
+  string account_id = 10;
+  reserved 11;
+  reserved "category";
+  repeated string supporting_transaction_ids = 12;
+  string explanation = 13;
+  optional string category_id = 14;
+  RecurringEvidence evidence = 15;
+  optional int64 observed_amount_minor = 16;
+  repeated string amount_observation_transaction_ids = 17;
+}
+
+message DetectRecurringResponse {
+  repeated RecurringCandidate candidates = 1;
+}
+
+enum ConditionField {
+  CONDITION_FIELD_UNSPECIFIED = 0;
+  CONDITION_FIELD_MERCHANT = 1;
+  CONDITION_FIELD_AMOUNT = 2;
+  CONDITION_FIELD_CATEGORY = 3;
+  CONDITION_FIELD_ACCOUNT = 4;
+  CONDITION_FIELD_TRANSACTION_TYPE = 5;
+  CONDITION_FIELD_INCOME_SOURCE = 6;
+  CONDITION_FIELD_SPACE = 7;
+}
+
+enum ConditionOperator {
+  CONDITION_OPERATOR_UNSPECIFIED = 0;
+  CONDITION_OPERATOR_CONTAINS = 1;
+  CONDITION_OPERATOR_IS_EXACTLY = 2;
+  CONDITION_OPERATOR_STARTS_WITH = 3;
+  CONDITION_OPERATOR_GREATER_THAN = 4;
+  CONDITION_OPERATOR_LESS_THAN = 5;
+}
+
+message RuleCondition {
+  ConditionField field = 1;
+  ConditionOperator operator = 2;
+  oneof value {
+    string text = 3;
+    int64 amount_minor = 4;
+  }
+}
+
+enum RuleActionKind {
+  RULE_ACTION_KIND_UNSPECIFIED = 0;
+  RULE_ACTION_KIND_SET_CATEGORY = 1;
+  RULE_ACTION_KIND_ALLOCATE_SPACE = 2;
+  RULE_ACTION_KIND_ADD_TAG = 3;
+  RULE_ACTION_KIND_SET_SPLIT = 4;
+  RULE_ACTION_KIND_MARK_REVIEWED = 5;
+  RULE_ACTION_KIND_CREATE_NOTIFICATION = 6;
+}
+
+message RuleAction {
+  RuleActionKind kind = 1;
+  optional string value = 2;
+}
+
+message Rule {
+  string rule_id = 1;
+  uint32 priority = 2;
+  bool enabled = 3;
+  repeated RuleCondition conditions = 4;
+  repeated RuleAction actions = 5;
+}
+
+message RuleTransaction {
+  string transaction_id = 1;
+  Currency currency = 2;
+  optional string merchant = 3;
+  int64 amount_minor = 4;
+  optional string category = 5;
+  optional string account = 6;
+  optional string transaction_type = 7;
+  optional string income_source = 8;
+  optional string space = 9;
+}
+
+message EvaluateRulesRequest {
+  RuleTransaction transaction = 1;
+  repeated Rule rules = 2;
+}
+
+message EvaluatedAction {
+  string rule_id = 1;
+  uint32 priority = 2;
+  uint32 action_index = 3;
+  RuleAction action = 4;
+}
+
+message EvaluateRulesResponse {
+  repeated string matched_rule_ids = 1;
+  repeated EvaluatedAction actions = 2;
+}
+
+enum BudgetStatus {
+  BUDGET_STATUS_UNSPECIFIED = 0;
+  BUDGET_STATUS_ON_TRACK = 1;
+  BUDGET_STATUS_FAST = 2;
+  BUDGET_STATUS_CRITICAL = 3;
+  BUDGET_STATUS_EXCEEDED = 4;
+}
+
+message CalculateBudgetStatusRequest {
+  Currency currency = 1;
+  int64 limit_minor = 2;
+  int64 spent_minor = 3;
+  uint32 warning_threshold_percent = 4;
+  uint32 critical_threshold_percent = 5;
+  uint32 elapsed_units = 6;
+  uint32 period_units = 7;
+}
+
+message CalculateBudgetStatusResponse {
+  Currency currency = 1;
+  BudgetStatus status = 2;
+  int64 remaining_minor = 3;
+  int64 expected_spend_minor = 4;
+  int64 projected_spend_minor = 5;
+  int64 used_basis_points = 6;
+  int64 elapsed_basis_points = 7;
+}
+
+enum ProtectedKind {
+  PROTECTED_KIND_UNSPECIFIED = 0;
+  PROTECTED_KIND_UPCOMING_BILL = 1;
+  PROTECTED_KIND_SUBSCRIPTION = 2;
+  PROTECTED_KIND_PROTECTED_SPACE = 3;
+  PROTECTED_KIND_REQUIRED_GOAL_CONTRIBUTION = 4;
+}
+
+message ProtectedItem {
+  string id = 1;
+  string label = 2;
+  ProtectedKind kind = 3;
+  int64 amount_minor = 4;
+}
+
+message PlannedAllocation {
+  string id = 1;
+  string label = 2;
+  int64 amount_minor = 3;
+}
+
+message CalculateAvailableToSpendRequest {
+  Currency currency = 1;
+  int64 liquid_balance_minor = 2;
+  int64 eligible_expected_income_minor = 3;
+  repeated ProtectedItem protected_items = 4;
+  repeated PlannedAllocation planned_allocations = 5;
+  int64 safety_buffer_minor = 6;
+  ProjectionStatus projection_status = 7;
+  int64 minimum_projected_balance_minor = 8;
+}
+
+enum AvailableComponentKind {
+  AVAILABLE_COMPONENT_KIND_UNSPECIFIED = 0;
+  AVAILABLE_COMPONENT_KIND_LIQUID_BALANCE = 1;
+  AVAILABLE_COMPONENT_KIND_EXPECTED_INCOME = 2;
+  AVAILABLE_COMPONENT_KIND_UPCOMING_BILL = 3;
+  AVAILABLE_COMPONENT_KIND_SUBSCRIPTION = 4;
+  AVAILABLE_COMPONENT_KIND_PROTECTED_SPACE = 5;
+  AVAILABLE_COMPONENT_KIND_REQUIRED_GOAL_CONTRIBUTION = 6;
+  AVAILABLE_COMPONENT_KIND_SAFETY_BUFFER = 7;
+  AVAILABLE_COMPONENT_KIND_PLANNED_ALLOCATION = 8;
+  AVAILABLE_COMPONENT_KIND_PAY_CYCLE_RESERVE = 9;
+}
+
+message AvailableComponent {
+  string id = 1;
+  string label = 2;
+  AvailableComponentKind kind = 3;
+  int64 amount_minor = 4;
+  int64 effect_minor = 5;
+}
+
+message CalculateAvailableToSpendResponse {
+  Currency currency = 1;
+  int64 available_minor = 2;
+  int64 total_minor = 3;
+  int64 protected_minor = 4;
+  int64 planned_allocations_minor = 5;
+  repeated AvailableComponent breakdown = 6;
+  ProjectionStatus status = 7;
+}
+
+message CashFlowComponents {
+  int64 income_minor = 1;
+  int64 fixed_outflow_minor = 2;
+  int64 variable_outflow_minor = 3;
+  int64 subscriptions_minor = 4;
+  int64 savings_minor = 5;
+}
+
+message CashFlowSummary {
+  int64 income_minor = 1;
+  int64 fixed_outflow_minor = 2;
+  int64 variable_outflow_minor = 3;
+  int64 subscriptions_minor = 4;
+  int64 savings_minor = 5;
+  int64 total_outflow_minor = 6;
+  int64 net_minor = 7;
+}
+
+message CalculateCashFlowRequest {
+  Currency currency = 1;
+  CashFlowComponents actual = 2;
+  CashFlowComponents projected = 3;
+}
+
+message CalculateCashFlowResponse {
+  Currency currency = 1;
+  CashFlowSummary actual = 2;
+  CashFlowSummary projected = 3;
+}
+
+enum ProjectionKind {
+  PROJECTION_KIND_UNSPECIFIED = 0;
+  PROJECTION_KIND_SALARY = 1;
+  PROJECTION_KIND_BILL = 2;
+  PROJECTION_KIND_SUBSCRIPTION = 3;
+  PROJECTION_KIND_LOAN_PAYMENT = 4;
+  PROJECTION_KIND_PLANNED_TRANSFER = 5;
+  PROJECTION_KIND_GOAL_CONTRIBUTION = 6;
+  PROJECTION_KIND_OTHER = 7;
+}
+
+enum Frequency {
+  FREQUENCY_UNSPECIFIED = 0;
+  FREQUENCY_ONCE = 1;
+  FREQUENCY_WEEKLY = 2;
+  FREQUENCY_BIWEEKLY = 3;
+  FREQUENCY_MONTHLY = 4;
+  FREQUENCY_QUARTERLY = 5;
+  FREQUENCY_ANNUALLY = 6;
+}
+
+message ProjectionSource {
+  string source_id = 1;
+  string name = 2;
+  ProjectionKind kind = 3;
+  int64 amount_minor = 4;
+  Date first_date = 5;
+  Frequency frequency = 6;
+  optional Date end_date = 7;
+}
+
+message BuildProjectionRequest {
+  Currency currency = 1;
+  int64 starting_balance_minor = 2;
+  Date start_date = 3;
+  Date end_date = 4;
+  int64 safety_floor_minor = 5;
+  uint32 max_events = 6;
+  repeated ProjectionSource sources = 7;
+  bool pay_cycle_horizon = 8;
+}
+
+enum ProjectionStatus {
+  PROJECTION_STATUS_UNSPECIFIED = 0;
+  PROJECTION_STATUS_ON_TRACK = 1;
+  PROJECTION_STATUS_WATCH = 2;
+  PROJECTION_STATUS_AT_RISK = 3;
+}
+
+message TimelineEvent {
+  string source_id = 1;
+  uint32 occurrence = 2;
+  Date date = 3;
+  ProjectionKind kind = 4;
+  string name = 5;
+  int64 amount_minor = 6;
+  int64 balance_before_minor = 7;
+  int64 balance_after_minor = 8;
+}
+
+message BuildProjectionResponse {
+  Currency currency = 1;
+  int64 ending_balance_minor = 2;
+  int64 minimum_balance_minor = 3;
+  Date minimum_balance_date = 4;
+  ProjectionStatus status = 5;
+  repeated TimelineEvent events = 6;
+}
+
+message CalculateGoalRequest {
+  Currency currency = 1;
+  int64 target_minor = 2;
+  int64 current_minor = 3;
+  int64 current_monthly_contribution_minor = 4;
+  Date current_date = 5;
+  optional Date target_date = 6;
+}
+
+enum GoalStatus {
+  GOAL_STATUS_UNSPECIFIED = 0;
+  GOAL_STATUS_COMPLETED = 1;
+  GOAL_STATUS_ON_TRACK = 2;
+  GOAL_STATUS_BEHIND_PACE = 3;
+  GOAL_STATUS_NO_TARGET_DATE = 4;
+}
+
+message CalculateGoalResponse {
+  Currency currency = 1;
+  GoalStatus status = 2;
+  int64 remaining_minor = 3;
+  int64 progress_basis_points = 4;
+  optional uint32 contribution_months_remaining = 5;
+  optional int64 required_monthly_contribution_minor = 6;
+  optional Date expected_completion_date = 7;
+}
+
+message CalculateLoanScenarioRequest {
+  Currency currency = 1;
+  int64 principal_remaining_minor = 2;
+  uint32 annual_interest_rate_basis_points = 3;
+  int64 monthly_payment_minor = 4;
+  int64 extra_monthly_payment_minor = 5;
+  Date next_payment_date = 6;
+  bool include_schedule = 7;
+}
+
+message LoanPayment {
+  uint32 payment_number = 1;
+  Date payment_date = 2;
+  int64 payment_minor = 3;
+  int64 principal_minor = 4;
+  int64 interest_minor = 5;
+  int64 remaining_principal_minor = 6;
+}
+
+message AmortizationSummary {
+  int64 monthly_payment_minor = 1;
+  uint32 payoff_months = 2;
+  optional Date payoff_date = 3;
+  int64 total_interest_minor = 4;
+  int64 total_paid_minor = 5;
+  repeated LoanPayment schedule = 6;
+}
+
+message CalculateLoanScenarioResponse {
+  Currency currency = 1;
+  AmortizationSummary base = 2;
+  AmortizationSummary scenario = 3;
+  uint32 months_saved = 4;
+  int64 interest_saved_minor = 5;
+}
+
+message HouseholdObligationEntry {
+  string obligation_id = 1;
+  string member_id = 2;
+  int64 paid_minor = 3;
+  int64 share_minor = 4;
+}
+
+message CalculateHouseholdSettlementRequest {
+  Currency currency = 1;
+  repeated HouseholdObligationEntry entries = 2;
+}
+
+message HouseholdMemberPosition {
+  string member_id = 1;
+  int64 total_paid_minor = 2;
+  int64 total_share_minor = 3;
+  // Positive: the household owes the member. Negative: the member owes the household.
+  int64 net_minor = 4;
+}
+
+message HouseholdSettlementTransfer {
+  // Transfers always move from a negative-net member to a positive-net member.
+  string from_member_id = 1;
+  string to_member_id = 2;
+  int64 amount_minor = 3;
+}
+
+message CalculateHouseholdSettlementResponse {
+  Currency currency = 1;
+  repeated HouseholdMemberPosition positions = 2;
+  repeated HouseholdSettlementTransfer transfers = 3;
+}
+
+message AnalyticsBucket {
+  string id = 1;
+  string label = 2;
+  int64 amount_minor = 3;
+  uint32 item_count = 4;
+}
+
+message CalculateAnalyticsBreakdownRequest {
+  Currency currency = 1;
+  repeated AnalyticsBucket buckets = 2;
+}
+
+message AnalyticsBreakdownItem {
+  string id = 1;
+  string label = 2;
+  int64 amount_minor = 3;
+  uint32 item_count = 4;
+  uint32 share_basis_points = 5;
+}
+
+message CalculateAnalyticsBreakdownResponse {
+  Currency currency = 1;
+  int64 total_minor = 2;
+  uint64 item_count = 3;
+  repeated AnalyticsBreakdownItem buckets = 4;
+}
+
+message Valuation {
+  string id = 1;
+  string label = 2;
+  int64 amount_minor = 3;
+}
+
+message CalculateNetWorthRequest {
+  Currency currency = 1;
+  repeated Valuation assets = 2;
+  repeated Valuation liabilities = 3;
+}
+
+message CalculateNetWorthResponse {
+  Currency currency = 1;
+  int64 total_assets_minor = 2;
+  int64 total_liabilities_minor = 3;
+  int64 net_worth_minor = 4;
+}
+
+message CalculateSubscriptionSummaryRequest {
+  Currency currency = 1;
+  int64 expected_amount_minor = 2;
+  Frequency frequency = 3;
+  repeated int64 transaction_amounts_minor = 4;
+}
+
+message CalculateSubscriptionSummaryResponse {
+  Currency currency = 1;
+  int64 annual_cost_minor = 2;
+  int64 paid_this_year_minor = 3;
+  repeated int64 payment_amounts_minor = 4;
+}
+
+enum PlanningItemKind {
+  PLANNING_ITEM_KIND_UNSPECIFIED = 0;
+  PLANNING_ITEM_KIND_INCOME = 1;
+  PLANNING_ITEM_KIND_BILL = 2;
+  PLANNING_ITEM_KIND_SUBSCRIPTION = 3;
+}
+
+message PlanningItem {
+  string id = 1;
+  string name = 2;
+  PlanningItemKind kind = 3;
+  int64 expected_amount_minor = 4;
+  Date next_date = 5;
+  Frequency frequency = 6;
+}
+
+message PlanningAllocation {
+  string id = 1;
+  string name = 2;
+  int64 amount_minor = 3;
+  Frequency frequency = 4;
+}
+
+message CalculatePlanningSummaryRequest {
+  Currency currency = 1;
+  Date as_of_date = 2;
+  Date plan_start_date = 3;
+  Date plan_end_date = 4;
+  repeated PlanningItem items = 5;
+  repeated PlanningAllocation allocations = 6;
+}
+
+message PlanningAllocationAmount {
+  string id = 1;
+  string name = 2;
+  int64 amount_minor = 3;
+}
+
+message CalculatePlanningSummaryResponse {
+  Currency currency = 1;
+  int64 expected_income_minor = 2;
+  int64 committed_bills_minor = 3;
+  int64 committed_subscriptions_minor = 4;
+  int64 planned_minor = 5;
+  int64 unallocated_minor = 6;
+  int64 recurring_bills_monthly_minor = 7;
+  int64 recurring_subscriptions_monthly_minor = 8;
+  int64 recurring_monthly_minor = 9;
+  uint32 recurring_share_percent = 10;
+  int64 next_7_days_minor = 11;
+  int64 next_30_days_minor = 12;
+  int64 annual_cost_minor = 13;
+  repeated PlanningAllocationAmount allocations = 14;
+}

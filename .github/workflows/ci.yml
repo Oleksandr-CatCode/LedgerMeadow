@@ -1,0 +1,96 @@
+name: Release checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: release_test
+          POSTGRES_DB: ledgermeadow_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U release_test -d ledgermeadow_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql://release_test@127.0.0.1:5432/ledgermeadow_test?sslmode=disable
+      TEST_DATABASE_URL: postgresql://release_test@127.0.0.1:5432/ledgermeadow_test?sslmode=disable
+      MIGRATIONS_DIR: ../../db/migrations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.26.7'
+          cache-dependency-path: apps/api/go.sum
+      - run: go build ./...
+      - run: go run ./cmd/migrate
+      - name: Unit and synthetic database integration tests
+        run: go test -p 1 -count=1 ./...
+      - name: Disclosure-boundary race tests
+        run: go test -race ./src/modules/banking/services ./src/modules/platform/plaid ./src/router ./src/auth
+      - name: Go vulnerability scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          govulncheck ./...
+  engine:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/financial-engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: rustup toolchain install 1.92.0 --profile minimal && rustup default 1.92.0
+      - run: cargo test --locked
+      - name: Rust dependency audit
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=low
+  images:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: docker build -f infra/docker/api.Dockerfile -t ledgermeadow-api .
+      - run: docker build -f infra/docker/engine.Dockerfile -t ledgermeadow-engine .
+  publication:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/check_publication.py
+      - run: python3 -m unittest discover -s tests -v
+      - name: Scan complete Git history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          gh release download v8.30.1 --repo gitleaks/gitleaks --pattern gitleaks_8.30.1_linux_x64.tar.gz --pattern gitleaks_8.30.1_checksums.txt --dir "$RUNNER_TEMP/gitleaks"
+          cd "$RUNNER_TEMP/gitleaks"
+          awk '$2 == "gitleaks_8.30.1_linux_x64.tar.gz"' gitleaks_8.30.1_checksums.txt | sha256sum --check --strict
+          tar -xzf gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+          ./gitleaks git "$GITHUB_WORKSPACE" --log-opts=--all --redact=100

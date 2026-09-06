@@ -1,0 +1,29 @@
+[package]
+name = "ledgermeadow-financial-engine"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+prost = "0.14.4"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "=0.10.9"
+tokio = { version = "1.49", features = ["macros", "rt-multi-thread", "signal"] }
+tonic = "0.14.6"
+tonic-prost = "0.14.6"
+
+[build-dependencies]
+prost-build = "0.14.4"
+protoc-bin-vendored = "3.2.0"
+tonic-prost-build = "0.14.6"
+
+[profile.release]
+strip = "symbols"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+float_arithmetic = "deny"
+panic = "deny"
+unwrap_used = "deny"

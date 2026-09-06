@@ -1,0 +1,54 @@
+# Keep build contexts minimal: only sources the Dockerfiles actually copy.
+
+# Secrets and local configuration — must never enter a build context or image layer.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.local-secrets/
+**/.local-secrets/
+*.key
+*.pem
+
+# Build outputs and dependencies — rebuilt inside the builder stage.
+apps/financial-engine/target/
+**/target/
+apps/web/node_modules/
+**/node_modules/
+apps/web/dist/
+**/dist/
+
+# Not runtime or build inputs.
+.git/
+.github/
+.agents/
+.vscode/
+.idea/
+logo/
+db/seeds/
+scripts/
+*.md
+**/*.md
+!contracts/**/*.md
+**/*_test.go
+apps/financial-engine/tests/
+**/*.local
+**/.aws/
+**/.ssh/
+**/.modal*
+**/*.p12
+**/*.pfx
+**/*.csv
+**/*.tsv
+**/*.xlsx
+**/*.pdf
+**/*.log
+**/*.dump
+**/*.backup
+**/*.zip
+**/*.png
+**/*.jpg
+**/*.map
+**/testdata/
